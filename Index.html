@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureChat - Private Messaging</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --border: #e2e8f0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        header {
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .security-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--success);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+        
+        .app-description {
+            max-width: 600px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+        
+        .app-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 0;
+            min-height: 600px;
+        }
+        
+        .left-column {
+            background: var(--light);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .auth-section, .user-section {
+            padding: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        button:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        
+        button.secondary {
+            background-color: white;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+        
+        button.secondary:hover {
+            background-color: #f5f7ff;
+        }
+        
+        button.danger {
+            background-color: white;
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+        
+        button.danger:hover {
+            background-color: #fef2f2;
+        }
+        
+        .status-message {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        
+        .status-success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-error {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+        
+        .status-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        
+        .user-list {
+            list-style: none;
+            flex: 1;
+            overflow-y: auto;
+            border-top: 1px solid var(--border);
+        }
+        
+        .user-item {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background-color 0.2s;
+        }
+        
+        .user-item:hover {
+            background-color: #f1f5f9;
+        }
+        
+        .user-item.active {
+            background-color: #eef2ff;
+            border-right: 3px solid var(--primary);
+        }
+        
+        .user-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .user-info {
+            flex: 1;
+        }
+        
+        .username {
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+        
+        .user-status {
+            font-size: 0.8rem;
+            color: var(--gray);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .status-online {
+            background-color: var(--success);
+        }
+        
+        .status-offline {
+            background-color: var(--gray);
+        }
+        
+        .chat-section {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: white;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #f8fafc;
+        }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message {
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 75%;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.sent {
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .message.received {
+            background: white;
+            border: 1px solid var(--border);
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .message-sender {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .message-content {
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+        
+        .message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            text-align: right;
+        }
+        
+        .message-form {
+            display: flex;
+            gap: 12px;
+            padding: 20px;
+            border-top: 1px solid var(--border);
+            background: white;
+        }
+        
+        #messageInput {
+            flex: 1;
+        }
+        
+        #sendMessageButton {
+            width: auto;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .privacy-info {
+            padding: 15px;
+            background: #fffbeb;
+            border-top: 1px solid #fcd34d;
+            font-size: 0.85rem;
+            color: #92400e;
+        }
+        
+        @media (max-width: 768px) {
+            .app-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .left-column {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            
+            .message {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="security-badge">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span>End-to-End Encrypted</span>
+            </div>
+            <h1>SecureChat</h1>
+            <p class="app-description">Private messaging with username-based connections and secure Supabase backend</p>
+        </header>
+        
+        <div class="app-container">
+            <div class="left-column">
+                <section id="authSection" class="auth-section">
+                    <h2 class="section-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        Authentication
+                    </h2>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" placeholder="Enter your email" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+                    </div>
+                    <div class="form-group">
+                        <button id="signUpButton">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                            Sign Up
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <button id="signInButton" class="secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                                <polyline points="10 17 15 12 10 7"/>
+                                <line x1="15" y1="12" x2="3" y2="12"/>
+                            </svg>
+                            Sign In
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <button id="signOutButton" class="danger hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                <polyline points="16 17 21 12 16 7"/>
+                                <line x1="21" y1="12" x2="9" y2="12"/>
+                            </svg>
+                            Sign Out
+                        </button>
+                    </div>
+                    <div id="authStatus" class="status-message"></div>
+                </section>
+                
+                <section id="userSection" class="user-section hidden">
+                    <h2 class="section-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        My Profile
+                    </h2>
+                    <div class="form-group">
+                        <label for="usernameInput">Username</label>
+                        <input type="text" id="usernameInput" placeholder="Choose a username">
+                        <button id="setUsernameButton" class="secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            Set Username
+                        </button>
+                    </div>
+                    <h3 class="section-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        Online Users
+                    </h3>
+                    <ul id="userList" class="user-list"></ul>
+                </section>
+            </div>
+            
+            <section id="chatSection" class="chat-section hidden">
+                <div class="chat-header">
+                    <div class="user-avatar" id="currentChatAvatar">U</div>
+                    <div>
+                        <div class="username" id="currentChatUsername">Select a user to chat with</div>
+                        <div class="user-status" id="currentChatStatus">
+                            <span class="status-indicator status-offline"></span>
+                            <span>Choose from the online users list</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-container">
+                    <div class="messages-container" id="messagesContainer">
+                        <div class="message-info">Select a user from the list to start chatting</div>
+                    </div>
+                    
+                    <div class="message-form">
+                        <input type="text" id="messageInput" placeholder="Type your message..." disabled>
+                        <button id="sendMessageButton" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"/>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                            </svg>
+                            Send
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <div class="privacy-info">
+            <strong>Privacy Notice:</strong> All messages are encrypted and securely stored. We never share your data with third parties.
+        </div>
+    </div>
+
+    <script>
+        // Supabase initialization
+        // In a production environment, these would be set through environment variables
+        // For this example, we're using placeholder values
+        const SUPABASE_URL = 'https://vhsqscoaspviufhuqftf.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc3FzY29hc3B2aXVmaHVxZnRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzMDk1MDIsImV4cCI6MjA3MTg4NTUwMn0.Y_xfzoB7MfxJGdpEYGHG5GT90Pt22vJbtRKjVIASghc';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // DOM Elements
+        const authSection = document.getElementById('authSection');
+        const userSection = document.getElementById('userSection');
+        const chatSection = document.getElementById('chatSection');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const signUpButton = document.getElementById('signUpButton');
+        const signInButton = document.getElementById('signInButton');
+        const signOutButton = document.getElementById('signOutButton');
+        const authStatus = document.getElementById('authStatus');
+        const usernameInput = document.getElementById('usernameInput');
+        const setUsernameButton = document.getElementById('setUsernameButton');
+        const userList = document.getElementById('userList');
+        const currentChatAvatar = document.getElementById('currentChatAvatar');
+        const currentChatUsername = document.getElementById('currentChatUsername');
+        const currentChatStatus = document.getElementById('currentChatStatus');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendMessageButton = document.getElementById('sendMessageButton');
+        
+        let currentUser = null;
+        let currentProfile = null;
+        let selectedUser = null;
+        let profilesSubscription = null;
+        let messagesSubscription = null;
+        
+        // Auth State Listener
+        supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+                currentUser = session.user;
+                
+                // Get user profile
+                await getProfile();
+                
+                // Show app sections
+                authSection.querySelector('h2').textContent = 'My Account';
+                signOutButton.classList.remove('hidden');
+                userSection.classList.remove('hidden');
+                chatSection.classList.remove('hidden');
+                
+                // Load users and set up real-time listeners
+                loadUsers();
+                setupRealtimeListeners();
+            } else {
+                // User signed out
+                currentUser = null;
+                currentProfile = null;
+                selectedUser = null;
+                
+                // Reset UI
+                authSection.querySelector('h2').textContent = 'Authentication';
+                signOutButton.classList.add('hidden');
+                userSection.classList.add('hidden');
+                chatSection.classList.add('hidden');
+                messagesContainer.innerHTML = '<div class="message-info">Select a user from the list to start chatting</div>';
+                currentChatAvatar.textContent = 'U';
+                currentChatUsername.textContent = 'Select a user to chat with';
+                currentChatStatus.innerHTML = '<span class="status-indicator status-offline"></span> Choose from the online users list';
+                
+                // Unsubscribe from real-time updates
+                if (profilesSubscription) {
+                    supabase.removeSubscription(profilesSubscription);
+                }
+                if (messagesSubscription) {
+                    supabase.removeSubscription(messagesSubscription);
+                }
+            }
+        });
+        
+        // Sign Up
+        signUpButton.addEventListener('click', async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            
+            if (!email || !password) {
+                showStatus('Please enter both email and password', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showStatus('Password must be at least 6 characters', 'error');
+                return;
+            }
+            
+            const { user, error } = await supabase.auth.signUp({
+                email,
+                password
+            });
+            
+            if (error) {
+                showStatus(error.message, 'error');
+            } else {
+                showStatus('Sign up successful! Please check your email for confirmation.', 'success');
+            }
+        });
+        
+        // Sign In
+        signInButton.addEventListener('click', async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            
+            if (!email || !password) {
+                showStatus('Please enter both email and password', 'error');
+                return;
+            }
+            
+            const { user, error } = await supabase.auth.signIn({
+                email,
+                password
+            });
+            
+            if (error) {
+                showStatus(error.message, 'error');
+            }
+        });
+        
+        // Sign Out
+        signOutButton.addEventListener('click', async () => {
+            // Update online status to false
+            if (currentUser) {
+                await supabase
+                    .from('profiles')
+                    .update({ online: false, last_seen: new Date().toISOString() })
+                    .eq('id', currentUser.id);
+            }
+            
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                showStatus(error.message, 'error');
+            }
+        });
+        
+        // Set Username
+        setUsernameButton.addEventListener('click', async () => {
+            const username = usernameInput.value.trim();
+            
+            if (!username) {
+                showStatus('Please enter a username', 'error', userSection);
+                return;
+            }
+            
+            if (username.length < 3) {
+                showStatus('Username must be at least 3 characters', 'error', userSection);
+                return;
+            }
+            
+            const { data, error } = await supabase
+                .from('profiles')
+                .update({ username })
+                .eq('id', currentUser.id);
+            
+            if (error) {
+                showStatus(error.message, 'error', userSection);
+            } else {
+                showStatus('Username updated successfully!', 'success', userSection);
+                currentProfile.username = username;
+                
+                // Reload users to show the updated username
+                loadUsers();
+            }
+        });
+        
+        // Send Message
+        sendMessageButton.addEventListener('click', sendMessage);
+        
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        async function sendMessage() {
+            const content = messageInput.value.trim();
+            
+            if (!content || !selectedUser) return;
+            
+            // Basic content validation
+            if (content.length > 500) {
+                showStatus('Message is too long (max 500 characters)', 'error');
+                return;
+            }
+            
+            const { error } = await supabase
+                .from('messages')
+                .insert([{ 
+                    sender_id: currentUser.id, 
+                    receiver_id: selectedUser.id,
+                    content 
+                }]);
+            
+            if (error) {
+                showStatus(error.message, 'error');
+            } else {
+                messageInput.value = '';
+            }
+        }
+        
+        // Get user profile
+        async function getProfile() {
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', currentUser.id)
+                .single();
+            
+            if (error) {
+                // Create profile if it doesn't exist
+                const username = `user_${Math.floor(Math.random() * 10000)}`;
+                const { data: newProfile, error: insertError } = await supabase
+                    .from('profiles')
+                    .insert([{ 
+                        id: currentUser.id, 
+                        username,
+                        online: true 
+                    }])
+                    .single();
+                
+                if (insertError) {
+                    showStatus(insertError.message, 'error');
+                    return;
+                }
+                
+                currentProfile = newProfile;
+                usernameInput.value = username;
+            } else {
+                currentProfile = profile;
+                usernameInput.value = profile.username;
+                
+                // Update online status
+                await supabase
+                    .from('profiles')
+                    .update({ online: true })
+                    .eq('id', currentUser.id);
+            }
+        }
+        
+        // Load users
+        async function loadUsers() {
+            const { data: users, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .neq('id', currentUser.id)
+                .order('username');
+            
+            if (error) {
+                showStatus(error.message, 'error');
+                return;
+            }
+            
+            userList.innerHTML = '';
+            
+            if (users.length === 0) {
+                userList.innerHTML = '<li class="user-item">No other users found</li>';
+                return;
+            }
+            
+            users.forEach(user => {
+                const userItem = document.createElement('li');
+                userItem.classList.add('user-item');
+                userItem.dataset.userId = user.id;
+                
+                const avatar = document.createElement('div');
+                avatar.classList.add('user-avatar');
+                avatar.textContent = user.username.charAt(0).toUpperCase();
+                
+                const userInfo = document.createElement('div');
+                userInfo.classList.add('user-info');
+                
+                const username = document.createElement('div');
+                username.classList.add('username');
+                username.textContent = user.username;
+                
+                const status = document.createElement('div');
+                status.classList.add('user-status');
+                
+                const statusIcon = document.createElement('span');
+                statusIcon.classList.add('status-indicator');
+                statusIcon.classList.add(user.online ? 'status-online' : 'status-offline');
+                
+                status.appendChild(statusIcon);
+                status.appendChild(document.createTextNode(user.online ? 'Online' : 'Offline'));
+                
+                userInfo.appendChild(username);
+                userInfo.appendChild(status);
+                
+                userItem.appendChild(avatar);
+                userItem.appendChild(userInfo);
+                
+                userItem.addEventListener('click', () => selectUser(user));
+                
+                userList.appendChild(userItem);
+            });
+        }
+        
+        // Select a user to chat with
+        function selectUser(user) {
+            // Remove active class from all users
+            document.querySelectorAll('.user-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Add active class to selected user
+            document.querySelector(`.user-item[data-user-id="${user.id}"]`).classList.add('active');
+            
+            selectedUser = user;
+            currentChatAvatar.textContent = user.username.charAt(0).toUpperCase();
+            currentChatUsername.textContent = user.username;
+            
+            const statusIndicator = document.createElement('span');
+            statusIndicator.classList.add('status-indicator');
+            statusIndicator.classList.add(user.online ? 'status-online' : 'status-offline');
+            
+            currentChatStatus.innerHTML = '';
+            currentChatStatus.appendChild(statusIndicator);
+            currentChatStatus.appendChild(document.createTextNode(user.online ? 'Online' : 'Offline'));
+            
+            // Enable message input
+            messageInput.disabled = false;
+            sendMessageButton.disabled = false;
+            
+            // Load messages with this user
+            loadMessages();
+        }
+        
+        // Load messages
+        async function loadMessages() {
+            if (!selectedUser) return;
+            
+            const { data: messages, error } = await supabase
+                .from('messages')
+                .select('*')
+                .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${selectedUser.id}),and(sender_id.eq.${selectedUser.id},receiver_id.eq.${currentUser.id})`)
+                .order('created_at', { ascending: true });
+            
+            if (error) {
+                showStatus(error.message, 'error');
+                return;
+            }
+            
+            messagesContainer.innerHTML = '';
+            
+            if (messages.length === 0) {
+                messagesContainer.innerHTML = '<div class="message-info">No messages yet. Start the conversation!</div>';
+                return;
+            }
+            
+            messages.forEach(message => {
+                addMessageToUI(message);
+            });
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Add message to UI
+        function addMessageToUI(message) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add(
+                message.sender_id === currentUser.id ? 'sent' : 'received'
+            );
+            
+            const senderName = message.sender_id === currentUser.id ? 'You' : selectedUser.username;
+            
+            messageElement.innerHTML = `
+                <div class="message-sender">${senderName}</div>
+                <div class="message-content">${message.content}</div>
+                <div class="message-time">${new Date(message.created_at).toLocaleTimeString()}</div>
+            `;
+            
+            messagesContainer.appendChild(messageElement);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Set up real-time listeners
+        function setupRealtimeListeners() {
+            // Listen for profile changes (online status, new users)
+            profilesSubscription = supabase
+                .from('profiles')
+                .on('*', payload => {
+                    // Reload users list when profiles change
+                    loadUsers();
+                    
+                    // Update current chat status if needed
+                    if (selectedUser && payload.new.id === selectedUser.id) {
+                        const statusIndicator = document.createElement('span');
+                        statusIndicator.classList.add('status-indicator');
+                        statusIndicator.classList.add(payload.new.online ? 'status-online' : 'status-offline');
+                        
+                        currentChatStatus.innerHTML = '';
+                        currentChatStatus.appendChild(statusIndicator);
+                        currentChatStatus.appendChild(document.createTextNode(payload.new.online ? 'Online' : 'Offline'));
+                    }
+                })
+                .subscribe();
+            
+            // Listen for new messages
+            messagesSubscription = supabase
+                .from('messages')
+                .on('INSERT', payload => {
+                    const message = payload.new;
+                    
+                    // If message is for current user and from selected user, or vice versa
+                    if ((message.receiver_id === currentUser.id && message.sender_id === selectedUser?.id) ||
+                        (message.sender_id === currentUser.id && message.receiver_id === selectedUser?.id)) {
+                        addMessageToUI(message);
+                    }
+                })
+                .subscribe();
+        }
+        
+        // Show status message
+        function showStatus(message, type, element = authSection) {
+            const statusDiv = element.querySelector('.status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status-message';
+            statusDiv.classList.add(`status-${type}`);
+            
+            // Clear status after 5 seconds
+            setTimeout(() => {
+                statusDiv.textContent = '';
+                statusDiv.className = 'status-message';
+            }, 5000);
+        }
+        
+        // Set up a heartbeat to update last_seen timestamp
+        setInterval(async () => {
+            if (currentUser) {
+                await supabase
+                    .from('profiles')
+                    .update({ last_seen: new Date().toISOString() })
+                    .eq('id', currentUser.id);
+            }
+        }, 60000); // Update every minute
+    </script>
+</body>
+</html>
